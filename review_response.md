@@ -20,10 +20,8 @@ Yes, salting is optional and set per request. Since each Block ID chains from th
 
 ## 6. Please respond to other questions posted in the reviews.
 
-**Global Shard Index and Dedup Map.**
+**Global Shard Index. (RA, RB, RD)** RDMA alone does not remove the location lookup, and Mooncake and LMCache (P2P) resolve each location through a central service before a transfer. CASCADE eliminates the per-request central lookup. Since a Block ID identifies immutable KV content, any copy of a block is correct. Thus, every node stores a full replica of Global Shard Index and resolves a remote location locally before one one-sided read. The shards partition each replica, and lookups and Metadata Sync merges on different shards proceed in parallel. Dedup Map tracks only the existence of a block, which changes at creation and full eviction, while Location Metadata changes at every tier movement.
 
-**Concurrency and consistency.**
+**Consistency.** (RA, RB) Content addressing also removes coordination from concurrent updates. Concurrent PUTs of the same Block ID produce identical copies, and either location is correct. A stale entry within the Metadata Sync interval fails Block ID and checksum validation and results in recomputation rather than a wrong read. Metadata Sync propagates only the 116-byte deltas of modified entries off the data path, and Table 3 shows that CASCADE still avoids 57-66% of block writes.
 
-**Workload and scope.**
-
-**Statistics and presentation.**
+**Workload and statistics. (RA, RB, RD)** The end-to-end evaluation directs each node to the prefixes of another node to isolate cross-node reuse. CASCADE, Mooncake, and LMCache (P2P) all achieve token hit rates of about 99%, and Figure 16 decomposes the TTFT gap into lookup, transfer, and the resulting queueing. Figure 7 distributes 128 block retrievals of 160 MB or 320 MB, and Figure 8 computes P99.9 over 300 reads per rank. Across repeated end-to-end runs, the coefficient of variation of TTFT is at most 11% at two or more nodes.
