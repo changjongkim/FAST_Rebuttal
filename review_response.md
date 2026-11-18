@@ -1,3 +1,12 @@
+- **Q1.** Can you provide a controlled breakdown separating the gains of your storage design from faster networking and data compression? How does block size affect improvements?
+- **Q2.** Does lossy compression affect output quality on long-document tasks, and how does the system impact token generation speed and full request time?
+- **Q3.** How does the system reuse partial chunks on early conversation divergence and reclaim obsolete data in shared persistent files?
+- **Q4.** How does cross-machine coordination handle server failures or dynamic scaling?
+- **Q5.** Sharing KV Cache blocks across tenants may introduce an information channel in between tenants, so information can be leaked (for example, fast TTFT for a never-used before prompt suggests to the attacker that a co-tenant used the same prompt before). Is salting optional in your HPC environment
+- **Q6.** Please respond to other questions posted in the reviews.
+
+---
+
 #### Q1-Ans)
 
 For transport, we ran CASCADE with MPI over TCP, the transport of the peer baselines. In the weak-scaling setup and TTFT of Figure 14 with 64K prefixes, CASCADE over TCP achieved 8.6× and 3.7× speedups over Mooncake and LMCache (P2P) on 8 nodes. Its TTFT remained 1.09s to 1.12s on 2 to 8 nodes, while the TTFT of Mooncake increased from 1.37s to 9.31s. The peers locate each block through centralized coordination, whereas CASCADE resolves locations in its local Global Shard Index replica and reuses retrieved blocks from its Shadow Copy Buffer (Section 3.3). Although CASCADE used 16-token pages against the 256-token chunks of the peers, all three systems reused about 99% of prompt tokens, so a higher reuse rate does not explain the gap. In the trace-driven evaluation of Figure 7, CASCADE over TCP also retrieved 160MB blocks in 63ms to 74ms, against 211ms to 218ms for LMCache (Disk) and PDC. Over RDMA, the same retrieval took 38ms to 49ms. Thus, CASCADE outperforms the peers without RDMA, and RDMA further reduces the retrieval latency.
