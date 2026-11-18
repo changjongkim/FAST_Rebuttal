@@ -13,7 +13,7 @@
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowered retrieval latency at every block size and node count, from 47ms to 19ms for 160MB blocks on 4 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half of the DRAM of FP16 (Section 3.3).
 
-**Block size.** The trace-driven evaluation uses 160MB and 320MB blocks of 512 and 1024 tokens. Without compression, its retrieval latency increased in proportion to block size, from 5ms for 40MB blocks to 38ms for 320MB blocks. In contrast, the E2E runs stored each 16-token vLLM page as one CASCADE block, against the 256-token chunks of the peers. However, all three systems reused about 99% of prompt tokens, so the finer blocks did not increase the reuse rate.
+**Block size.** The trace-driven evaluation uses 160MB and 320MB blocks of 512 and 1024 tokens. Without compression, its retrieval latency increased in proportion to block size, from 5ms for 40MB blocks to 38ms for 320MB blocks. In contrast, the E2E runs above stored each 16-token vLLM page as one CASCADE block. With the same 256-token blocks as the peers, CASCADE over TCP reused 99.9% of prompt tokens at a TTFT of 0.98s to 0.99s on 2 to 8 nodes. On 8 nodes, its speedups over Mooncake and LMCache (P2P) increased to 9.5× and 4.1×.
 
 
 #### Q2-Ans)
