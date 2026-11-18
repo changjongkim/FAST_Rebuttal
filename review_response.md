@@ -25,7 +25,7 @@ For reclamation on Lustre, Eviction Manager invalidates the Global Shard Index e
 
 #### Q4-Ans)
 
-Since CASCADE targets LLM inference on HPC allocations with fixed nodes, our paper did not consider node failures or dynamic scaling. However, its decentralized Global Shard Index can support both without a central metadata service. After a node failure, the remaining nodes can rebuild the communicator and RDMA Windows if the MPI runtime supports communicator recovery, and then invalidate the entries of the failed node. Lookups of those blocks become cache misses, and CASCADE recomputes them. For dynamic scaling, a new node receives the current Global Shard Index and joins Metadata Sync. Since Location Metadata records the location of each block, a new mapping of Block IDs to shards rebuilds only the index and moves no stored block.
+Since CASCADE targets LLM inference on HPC allocations with fixed nodes, our paper did not consider node failures or dynamic scaling. However, its decentralized Global Shard Index can support both without a central metadata service. After a node failure, the remaining nodes can rebuild the communicator and RDMA Windows if the MPI runtime supports communicator recovery, and then invalidate the entries of the failed node. Lookups of those blocks become cache misses, and CASCADE recomputes them. For dynamic scaling, a new node can receive the current Global Shard Index and join Metadata Sync. Since Location Metadata records the location of each block, a new mapping of Block IDs to shards rebuilds only the index and moves no stored block.
 
 #### Q5-Ans)
 
