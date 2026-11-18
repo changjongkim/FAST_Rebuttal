@@ -31,7 +31,7 @@ Since CASCADE targets HPC allocations with fixed nodes, our paper did not consid
 
 #### Q5-Ans)
 
-Salting is optional in CASCADE and set per request. A salt in the first block changes every chained Block ID of the request, so requests with different salts share no cached prefix. We ran four concurrent requests per node with 64K prefixes and one output token on 2 to 8 nodes. Requests with one shared salt reused 99.9% of prompt tokens at a TTFT of 7.5s to 8.9s. In contrast, requests with another tenant's salt reused no prefix block at a TTFT of 48.4s to 49.7s. This TTFT was no faster than recomputation, which removes the information channel between tenants.
+Salting is optional in CASCADE and set per request. A salt in the first block changes every chained Block ID of the request, so requests with different salts share no cached prefix. We ran four concurrent requests per node with 64K prefixes and one output token on 2 to 8 nodes. Requests with one shared salt reused 99.9% of prompt tokens at a TTFT of 7.5s to 8.9s. In contrast, requests with another tenant's salt reused no prefix block at a TTFT of 48.4s to 49.7s. Since this TTFT was no faster than recomputation, it did not reveal whether another tenant had used the same prompt.
 
 ---
 
