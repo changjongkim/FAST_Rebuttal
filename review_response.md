@@ -27,7 +27,7 @@
 
 **Partial chunks.** CASCADE reuses a prefix up to the last complete block before divergence, since each Block ID hashes its tokens with the preceding Block ID. With 16-token blocks, CASCADE recomputes at most 15 shared tokens at a divergence.
 
-**Obsolete data.** CASCADE can delete an aggregate file on Lustre once Metadata Sync has propagated the invalidation of all its blocks. For a partially valid file, Eviction Manager can be extended to count its valid blocks. Once this count decreases below a threshold, Aggregated File Writer can append these blocks to a new aggregate file and delete the old one. Thus, reclaiming a partially valid file copies fewer blocks than the threshold.
+**Obsolete data.** CASCADE can delete an aggregate file on Lustre once Metadata Sync has propagated the invalidation of all its blocks. For a partially valid file, Eviction Manager can be extended to count its valid blocks. Once this count decreases below a threshold, Aggregated File Writer can append these blocks to a new aggregate file. After Metadata Sync propagates their new locations, CASCADE can delete the old file. Thus, reclaiming a partially valid file copies fewer blocks than the threshold.
 
 #### Q4-Ans)
 
@@ -53,7 +53,7 @@ Salting is optional in CASCADE and set per request by the serving layer, which c
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
-**Consistency.** Stale metadata can lower the cache hit rate, but no request uses a wrong block. Since concurrent PUTs of the same Block ID produce equivalent copies, Metadata Sync can merge their entries in any order. A node publishes a location only after storing the block in Shadow Copy Buffer (Algorithm 1). Each invalidation removes an entry only while the entry names the invalidating node. After an RDMA READ, the reader validates the stored Block ID and payload checksum against the requested Block ID and its recorded checksum (Section 3.3). A stale read either returns the requested block or fails validation after any overwrite, and CASCADE then recomputes the block.
+**Consistency.** Stale metadata can lower the cache hit rate, but no request uses a wrong block. Since concurrent PUTs of the same Block ID produce equivalent copies, Metadata Sync can accept any one of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer (Algorithm 1). Each invalidation removes an entry only while the entry names the invalidating node. After an RDMA READ, the reader validates the stored Block ID and payload checksum against the requested Block ID and its recorded checksum (Section 3.3). With this validation, a node reuses a buffer slot without waiting for outstanding RDMA READs. A read that overlaps or follows the reuse fails validation, and CASCADE then recomputes the block.
 
 **Metadata scaling.** Across 2, 4, and 8 nodes, Metadata Sync took about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node per interval, it took at most 41ms and 569ms. At 100K blocks per second per node, these loads correspond to intervals of 100ms and 1000ms. Reads before each sync missed, and all 72,000 reads after it hit with 0 Block ID mismatches. Our 4-node E2E runs created fewer than 100 blocks per node per interval, under 1% of the 10K blocks of the stress test.
 
