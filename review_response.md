@@ -23,7 +23,7 @@ CASCADE compresses only the block copies outside GPU HBM, and decoding reads dec
 
 CASCADE reuses a prefix up to the last complete block before divergence, since each Block ID hashes the tokens of a block with the preceding Block ID. Our vLLM integration uses one 16-token page per block, which recomputes at most 15 shared tokens at a divergence.
 
-For reclamation on Lustre, CASCADE can delete an aggregate file once Eviction Manager has invalidated all its blocks and Metadata Sync has propagated the invalidations.
+For reclamation on Lustre, CASCADE can delete an aggregate file once Eviction Manager has invalidated all its blocks and Metadata Sync has propagated the invalidations. The current prototype does not count valid blocks per file.
 
 #### Q4-Ans)
 
@@ -37,7 +37,7 @@ Salting is optional in CASCADE and set per request. A salt in the first block ch
 
 #### Q6-1-Ans) Global Shard Index (RA, RB, RD)
 
-Every node resolves block locations in its full replica of Global Shard Index in host DRAM. The node that stores a block writes its entry, and Metadata Sync copies the entry to every replica. Within each replica, shards are logical partitions keyed by GPU ID, so lookups and Index Merger on different shards proceed in parallel. Since block movement does not change whether any copy of a block exists, the PUT check on Dedup Map remains valid while blocks move. Dedup Map adds about 0.3µs per merged delta to Metadata Sync, while global deduplication avoids 57 to 66% of block writes (Table 3).
+Every node resolves block locations in its full replica of Global Shard Index in host DRAM, which records the tier of each block, including GPU HBM and Lustre, and is not persistent. The node that stores a block writes its entry, and Metadata Sync copies the entry to every replica. Within each replica, shards are logical partitions keyed by GPU ID, so lookups and Index Merger on different shards proceed in parallel. Since block movement does not change whether any copy of a block exists, the PUT check on Dedup Map remains valid while blocks move. Dedup Map adds about 0.3µs per merged delta to Metadata Sync, while global deduplication avoids 57 to 66% of block writes (Table 3).
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
