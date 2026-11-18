@@ -33,6 +33,8 @@ Since CASCADE targets HPC allocations with fixed nodes, our paper did not consid
 
 Salting is optional in CASCADE and set per request. A salt in the first block changes every chained Block ID of the request, so requests with different salts share no cached prefix. With four concurrent requests per node, 64K prefixes, and one output token on 2 to 8 nodes, requests with one shared salt reused 99.9% of prompt tokens at a TTFT of 7.5s to 8.9s. Requests with another tenant's salt reused no prefix block at a TTFT of 48.4s to 49.7s, no faster than recomputation, which removes the timing channel.
 
+---
+
 #### Q6-1-Ans) Global Shard Index (RA, RB, RD)
 
 Every node resolves block locations in its full replica of Global Shard Index in host DRAM. The node that stores a block writes its entry, and Metadata Sync copies the entry to every replica. Within each replica, shards are logical partitions keyed by GPU ID, so lookups and Index Merger on different shards proceed in parallel. Since block movement does not change whether any copy of a block exists, the PUT check on Dedup Map remains valid while blocks move. Dedup Map adds about 0.3µs per merged delta to Metadata Sync, while global deduplication avoids 57 to 66% of block writes (Table 3).
