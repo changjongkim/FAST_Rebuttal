@@ -27,11 +27,11 @@ Since CASCADE compresses only block copies outside GPU HBM, decoding reads FP16 
 
 Since each Block ID hashes its tokens with the preceding Block ID, CASCADE reuses a prefix up to the last complete block before divergence. With 16-token blocks, at most 15 shared tokens are recomputed.
 
-CASCADE can delete an aggregate file on Lustre once Metadata Sync has propagated the invalidation of all its blocks. For a partially valid file, Eviction Manager can be extended to count the valid blocks and to invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, deleting the file copies none of them, at the cost of later recomputation.
+CASCADE can delete an aggregate file on Lustre once Metadata Sync has propagated the invalidation of all its blocks. For a partially valid file, Eviction Manager can be extended to count valid blocks and invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, deleting the file copies none of them, at the cost of later recomputation.
 
 #### Q4-Ans)
 
-CASCADE targets fixed HPC allocations, but its decentralized Global Shard Index can support node failures and dynamic scaling. With a fault-tolerant MPI runtime, the remaining nodes can rebuild the communicator and RDMA Windows and invalidate the entries of the failed node, whose blocks CASCADE recomputes. A new node can receive the current Global Shard Index and join Metadata Sync without moving any stored block.
+CASCADE targets fixed HPC allocations, but its decentralized Global Shard Index can support node failures and dynamic scaling. With a fault-tolerant MPI runtime, the remaining nodes can rebuild the communicator and RDMA Windows and invalidate the entries of the failed node, whose blocks CASCADE recomputes. A new node can receive Global Shard Index and join Metadata Sync without moving stored blocks.
 
 #### Q5-Ans)
 
@@ -39,7 +39,7 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 ---
 
-#### Q6-1-Ans) (RA, RB, RD)
+#### Q6-1-Ans) Global Shard Index (RA, RB, RD)
 
 **Replica placement.** Every node resolves block locations in its full, nonpersistent replica of Global Shard Index in host DRAM, which covers GPU HBM, DRAM, and Lustre.
 
@@ -47,15 +47,15 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 **Logical partitioning.** Within each replica, a Block ID hash selects a GPU ID and then its shard. Thus, under full replication, sharding replaces one global lock with one lock per shard, so Index Merger and lookups contend only within a shard.
 
-**Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers blocks still being stored. Each Block ID also hashes the model, LoRA adapter, KV layout, tensor-parallel rank, and block size.
+**Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers blocks still being stored. Each Block ID also hashes the model, LoRA adapter, KV data type and layout, tensor-parallel rank and size, and block size.
 
-#### Q6-2-Ans) (RA, RB)
+#### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
-Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost, stale, or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer and invalidates only the entries that name it. After an RDMA READ, the reader validates the block against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding RDMA READs. Any read during or after the reuse returns the requested block or fails validation.
+Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost, stale, or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer and invalidates only the entries that name it. After an RDMA READ, the reader validates the block against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and becomes a miss.
 
 Across 2, 4, and 8 nodes, Metadata Sync takes about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node, it takes at most 41ms and 569ms. At 100K blocks per second per node, the loads equal intervals of 100ms and 1000ms. Reads before each sync miss, and all 72,000 reads after it hit with 0 Block ID mismatches. Our E2E runs create fewer than 100 blocks per node per interval.
 
 
-#### Q6-3-Ans) (RA, RB, RD)
+#### Q6-3-Ans) Workload and statistics (RA, RB, RD)
 
 The E2E runs route each request to a prefix cached on another node, so the CPU cache of vLLM CPU offload misses in Figure 16. Over three or more runs, the TTFT of CASCADE and Mooncake has a coefficient of variation of at most 11%.
