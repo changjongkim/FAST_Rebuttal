@@ -51,13 +51,13 @@ Salting is optional in CASCADE and set per request by the serving layer, which c
 
 **Logical partitioning.** Within each replica, the hash of a Block ID selects a GPU ID and then its shard, one per GPU. Each shard has its own lock. Thus, under full replication, sharding replaces one global lock with one lock per shard, so Index Merger and lookups contend only within a shard.
 
-**Deduplication.** Global deduplication avoids 57 to 66% of block writes (Table 3). Each Block ID also hashes the model, LoRA adapter, KV data type and layout, tensor-parallel rank and size, and block size.
+**Deduplication.** Dedup Map records whether a block exists, from its PUT until its eviction from all nodes, while Global Shard Index records the location of each stored copy. As a result, tier movement updates only Global Shard Index, and the PUT check on Dedup Map includes blocks whose store is in progress. Global deduplication avoids 57 to 66% of block writes (Table 3). Each Block ID also hashes the model, LoRA adapter, KV data type and layout, tensor-parallel rank and size, and block size.
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
 **Consistency.** Since inference can recompute any KV block from its tokens and model, CASCADE enforces correctness strictly and treats availability as best effort. A lost, stale, or overwritten block becomes a miss. Concurrent PUTs of the same Block ID produce equivalent copies, so Metadata Sync can accept any one of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer (Algorithm 1). Each invalidation removes an entry only while the entry names the invalidating node. After an RDMA READ, the reader validates the block against the requested Block ID and its recorded checksum (Section 3.3). With validation after each read, a node reuses a buffer slot without waiting for outstanding RDMA READs. A read during or after the reuse either returns the requested block or fails validation and triggers recomputation.
 
-**Metadata scaling.** Across 2, 4, and 8 nodes, Metadata Sync took about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node per interval, it took at most 41ms and 569ms. Reads before each sync missed, and all 72,000 reads after it hit with 0 Block ID mismatches. Our 4-node E2E runs created fewer than 100 blocks per node per interval, under 1% of the 10K blocks of the stress test.
+**Metadata scaling.** Across 2, 4, and 8 nodes, Metadata Sync took about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node per interval, it took at most 41ms and 569ms. At 100K new blocks per second per node, the two loads correspond to intervals of 100ms and 1000ms. Reads before each sync missed, and all 72,000 reads after it hit with 0 Block ID mismatches. Our 4-node E2E runs created fewer than 100 blocks per node per interval, under 1% of the 10K blocks of the stress test.
 
 
 #### Q6-3-Ans) Workload and statistics (RA, RB, RD)
