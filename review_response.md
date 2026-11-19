@@ -13,7 +13,7 @@
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowers retrieval latency at every block size and node count, from 100ms to 38ms for 320MB blocks on 32 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half the DRAM of FP16.
 
-**Block size.** Without compression, trace-driven retrieval latency increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks. With the 256-token blocks of the peers in place of 16-token vLLM pages, CASCADE over TCP has a TTFT of 0.97-0.99s on 2-16 nodes. All three systems reuse about 99% of prompt tokens. On 8 nodes, CASCADE's speedups increase from 8.6× and 3.7× to 9.5× and 4.1×.
+**Block size.** Without compression, trace-driven retrieval latency increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks. With the peers' 256-token blocks in place of 16-token vLLM pages, the TTFT of CASCADE over TCP decreases from 1.23-2.18s to 0.97-0.99s on 2-16 nodes. CASCADE, Mooncake, and LMCache (P2P) all reuse about 99% of prompt tokens. On 8 nodes, CASCADE achieves 9.5× and 4.1× speedups over the two peers.
 
 
 #### Q2-Ans)
@@ -51,11 +51,12 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
-Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any entry without coordination. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
+Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any entry without consensus. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
 
-On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node, it takes at most 41ms and 569ms. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches. Our E2E runs create fewer than 100 blocks per node per interval.
+On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node, it takes at most 41ms and 569ms. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. In contrast, E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches.
 
 
 #### Q6-3-Ans) Workload and statistics (RA, RB, RD)
 
 The E2E runs route each request to a prefix cached on another node, so the CPU cache of vLLM CPU offload misses in Figure 16. Over three or more runs, the TTFT of CASCADE and Mooncake has a coefficient of variation of at most 11%.
+
