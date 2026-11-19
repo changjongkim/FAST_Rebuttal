@@ -13,7 +13,7 @@
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowered retrieval latency at every block size and node count, from 47ms to 19ms for 160MB blocks on 4 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half of the DRAM of FP16 (Section 3.3).
 
-**Block size.** The trace-driven evaluation uses 160MB and 320MB blocks of 512 and 1024 tokens. Without compression, its retrieval latency increased in proportion to block size, from 5ms for 40MB blocks to 38ms for 320MB blocks. In contrast, the E2E runs above stored each 16-token vLLM page as one CASCADE block. With the same 256-token blocks as the peers, CASCADE over TCP reused 99.9% of prompt tokens at a TTFT of 0.98s to 0.99s on 2 to 8 nodes. On 8 nodes, its speedups over Mooncake and LMCache (P2P) increased to 9.5× and 4.1×.
+**Block size.** The trace-driven evaluation uses 160MB and 320MB blocks of 512 and 1024 tokens. Without compression, its retrieval latency increased in proportion to block size, from 5ms for 40MB blocks to 38ms for 320MB blocks. In contrast, the E2E runs above stored each 16-token vLLM page as one CASCADE block. With the same 256-token blocks as the peers, CASCADE over TCP had a TTFT of 0.98s to 0.99s on 2 to 8 nodes. All three systems reused about 99% of prompt tokens. On 8 nodes, the speedups of CASCADE over Mooncake and LMCache (P2P) increased to 9.5× and 4.1×.
 
 
 #### Q2-Ans)
@@ -45,9 +45,11 @@ Salting is optional in CASCADE and set per request by the serving layer, which c
 
 #### Q6-1-Ans) Global Shard Index (RA, RB, RD)
 
-**Replicas.** Every node resolves block locations in its full replica of Global Shard Index in host DRAM. This replica records every tier, including GPU HBM and Lustre, and is not persistent.
+**Replica placement.** Every node holds a full replica of Global Shard Index in host DRAM and resolves block locations in it. This replica records every tier, including GPU HBM and Lustre, and is not persistent.
 
-**Shards.** The node that stores a block writes its entry, and Metadata Sync copies the entry to every replica. Within each replica, shards are logical partitions keyed by GPU ID, so lookups and Index Merger on different shards proceed in parallel.
+**Update ownership.** Only the node that stores a block writes its entry, and Metadata Sync copies the entry to every replica.
+
+**Logical partitioning.** Within each replica, the hash of a Block ID selects a GPU ID and then its shard, one per GPU. Each shard has its own lock, so Index Merger updates one shard while lookups on the other shards proceed. Thus, under full replication, sharding replaces one global lock with one lock per shard, and Metadata Sync and lookups contend only within a shard.
 
 **Deduplication.** Since block movement does not change whether a copy exists, the PUT check on Dedup Map remains valid. Global deduplication avoids 57 to 66% of block writes (Table 3). Each Block ID also hashes the model, LoRA adapter, KV data type and layout, tensor-parallel rank and size, and block size.
 
@@ -60,4 +62,4 @@ Salting is optional in CASCADE and set per request by the serving layer, which c
 
 #### Q6-3-Ans) Workload and statistics (RA, RB, RD)
 
-The E2E runs route each request to a prefix cached on another node. Over three or more runs, the TTFT of CASCADE and Mooncake had a coefficient of variation of at most 11%.
+The E2E runs route each request to a prefix cached on another node. As a result, node-local caches, such as the CPU cache of vLLM CPU offload in Figure 16, miss these prefixes. Over three or more runs, the TTFT of CASCADE and Mooncake had a coefficient of variation of at most 11%.
