@@ -18,7 +18,7 @@
 
 #### Q2-Ans)
 
-Per-layer INT8 does not lower output quality. On 280 questions from six English LongBench QA tasks, the F1 score is 40.0 for CASCADE with INT8, 39.5 without compression, and 40.2 for vLLM GPU. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. In contrast, one scale per block lowers the F1 score to 38.9 and changes 28% of the answers.
+Per-layer INT8, with one scale and zero point per layer, does not lower output quality. On 280 questions from six English LongBench QA tasks, the F1 score is 40.0 for CASCADE with INT8, 39.5 without compression, and 40.2 for vLLM GPU. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. In contrast, one scale per block lowers the F1 score to 38.9 and changes 28% of the answers.
 
 Decoding reads FP16 blocks in GPU HBM, since CASCADE compresses only copies outside HBM. With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE takes 48-50ms per token against 53ms for vLLM GPU. As CASCADE retrieves 99.9% of prompt tokens, its TTFT is 14-17s against 55-57s, and its full request time is 20-22s against 62-64s.
 
@@ -27,7 +27,7 @@ Decoding reads FP16 blocks in GPU HBM, since CASCADE compresses only copies outs
 
 Since each Block ID hashes its tokens with the preceding Block ID, CASCADE reuses a prefix up to the last complete block before divergence. With 16-token blocks, at most 15 shared tokens are recomputed.
 
-CASCADE can delete a Lustre aggregate file once Metadata Sync propagates invalidations of all its blocks. For a partially valid file, Eviction Manager can be extended to count valid blocks and invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, deleting the file copies none of them, at the cost of later recomputation.
+CASCADE can delete a Lustre aggregate file once Metadata Sync propagates invalidations of all its blocks. For a partially valid file, Eviction Manager can be extended to count valid blocks and invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, deleting the file copies none, at the cost of later recomputation.
 
 #### Q4-Ans)
 
@@ -45,7 +45,7 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 **Update ownership.** Only the node storing a block writes its entry, which Metadata Sync copies to every replica.
 
-**Logical partitioning.** Within each replica, a Block ID hash selects a GPU ID and then its shard. Thus, under full replication, sharding replaces one global lock with one lock per shard, so Index Merger and lookups contend only within a shard.
+**Logical partitioning.** Within each replica, a Block ID hash selects a GPU ID and then its shard. Thus, under full replication, sharding replaces one global lock with per-shard locks, so Index Merger and lookups contend only within a shard.
 
 **Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers unfinished stores. Each Block ID also hashes the model, LoRA adapter, KV dtype/layout, tensor-parallel rank/size, and block size.
 
