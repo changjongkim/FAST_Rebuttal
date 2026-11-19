@@ -43,7 +43,7 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 #### Q6-1-Ans) Global Shard Index (RA,RB,RD)
 
-**Replica placement.** Every node resolves block locations in its full, nonpersistent replica of Global Shard Index in host DRAM, which covers GPU HBM, DRAM, and Lustre.
+**Replica placement.** Every node resolves block locations in its full, non-persistent replica of Global Shard Index in host DRAM, which covers GPU HBM, DRAM, and Lustre.
 
 **Update ownership.** Only the node storing a block writes its entry, which Metadata Sync copies to every replica.
 
