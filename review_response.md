@@ -51,7 +51,7 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 Since inference can recompute KV blocks, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one BlockID produce equivalent copies, so Metadata Sync accepts any entry without consensus. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested BlockID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
 
-On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test, it takes at most 41ms and 569ms for 10K and 100K new 4KB blocks per node. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without BlockID mismatches.
+On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test, it takes at most 41ms and 569ms for 10K and 100K new 4KB blocks per node. At 100K blocks per second per node, the loads equal 100ms and 1000ms test intervals, respectively, with both syncs completing within their intervals. E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without BlockID mismatches.
 
 #### Q6-3-Ans) Workload and statistics (RA,RB,RD)
 
