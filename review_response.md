@@ -35,7 +35,7 @@ CASCADE targets fixed HPC allocations, but its decentralized Global Shard Index 
 
 #### Q5-Ans)
 
-Salting is optional and set per request by the serving layer, which can assign each tenant a secret salt. A salt in the first block changes every chained Block ID, so requests with different salts share no cached prefix. We run four concurrent requests per node with 64K prefixes and one output token on 2-8 nodes. Requests with one shared salt reuse 99.9% of prompt tokens at a TTFT of 7.5-8.9s. In contrast, requests with another tenant's salt reuse no prefix at a TTFT of 48.4-49.7s, no faster than recomputation.
+Salting is optional and set per request by the serving layer, which can assign each tenant a secret salt. With secret salts per tenant, TTFT does not reveal whether another tenant used the same prompt. A salt in the first block changes every chained Block ID, so requests with different salts share no cached prefix. We run four concurrent requests per node with 64K prefixes and one output token on 2-8 nodes. Requests with one shared salt reuse 99.9% of prompt tokens at a TTFT of 7.5-8.9s. In contrast, requests with another tenant's salt reuse no prefix at a TTFT of 48.4-49.7s, no faster than recomputation.
 
 ---
 
