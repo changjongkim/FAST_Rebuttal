@@ -9,9 +9,9 @@
 
 #### Q1-Ans)
 
-**Networking.** CASCADE outperforms the peers without RDMA. We run CASCADE with MPI over TCP, the transport of the peers, on the 64K prefixes of Figure 14. On 8 nodes, it achieves 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remains 1.09-1.12s on 2-8 nodes, while that of Mooncake increases from 1.37s to 9.31s. CASCADE resolves locations in its local Global Shard Index replica, without the centralized coordination of the peers. In the trace-driven Figure 7, CASCADE over TCP without INT8 retrieves 160MB blocks in 63-71ms, against 211-218ms for LMCache (Disk) and PDC. Over RDMA, the same retrieval takes 19-22ms.
+**Networking.** CASCADE outperforms the peers without RDMA. We run CASCADE with MPI over TCP, the transport of the peers, on the 64K prefixes of Figure 14. On 8 nodes, it achieves 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remains 1.08-1.12s on 2-32 nodes, while that of Mooncake increases from 1.37s to 25.94s. CASCADE resolves locations in its local Global Shard Index replica, without the centralized coordination of the peers. In the trace-driven Figure 7, CASCADE over TCP without INT8 retrieves 160MB blocks in 63-71ms, against 211-218ms for LMCache (Disk) and PDC. Over RDMA, the same retrieval takes 19-22ms.
 
-**Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowers retrieval latency at every block size and node count, from 47ms to 19ms for 160MB blocks on 4 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half the DRAM of FP16.
+**Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowers retrieval latency at every block size and node count, from 100ms to 38ms for 320MB blocks on 32 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half the DRAM of FP16.
 
 **Block size.** Without compression, trace-driven retrieval latency increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks. With the 256-token blocks of the peers in place of 16-token vLLM pages, CASCADE over TCP has a TTFT of 0.98-0.99s on 2-8 nodes. All three systems reuse about 99% of prompt tokens. On 8 nodes, the speedups of CASCADE increase to 9.5× and 4.1×.
 
@@ -53,7 +53,7 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any entry without coordination. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
 
-On 2-8 nodes, Metadata Sync takes about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node, it takes at most 41ms and 569ms. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches. Our E2E runs create fewer than 100 blocks per node per interval.
+On 2-32 nodes, Metadata Sync takes about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node, it takes at most 41ms and 569ms. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches. Our E2E runs create fewer than 100 blocks per node per interval.
 
 
 #### Q6-3-Ans) Workload and statistics (RA, RB, RD)
