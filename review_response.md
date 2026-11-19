@@ -9,7 +9,7 @@
 
 #### Q1-Ans)
 
-**Networking.** CASCADE outperforms the peers without RDMA. We ran CASCADE with MPI over TCP, the transport of the peers, in the weak-scaling setup of Figure 14 with 64K prefixes. On 8 nodes, CASCADE over TCP achieved 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remained 1.09s to 1.12s on 2 to 8 nodes, while the TTFT of Mooncake increased from 1.37s to 9.31s. The peers locate each block through centralized coordination. In contrast, CASCADE resolves locations in its local Global Shard Index replica and reuses retrieved blocks from Shadow Copy Buffer (Section 3.3). For the trace-driven evaluation of Figure 7, CASCADE over TCP without INT8 retrieved 160MB blocks in 63ms to 71ms, against 211ms to 218ms for LMCache (Disk) and PDC.
+**Networking.** CASCADE outperforms the peers without RDMA. In the 64K-prefix weak scaling of Figure 14, we ran CASCADE with MPI over TCP, the transport of the peers. On 8 nodes, CASCADE over TCP achieved 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remained 1.09s to 1.12s on 2 to 8 nodes, while that of Mooncake increased from 1.37s to 9.31s. The peers locate each block through centralized coordination. In contrast, CASCADE resolves locations in its local Global Shard Index replica and reuses retrieved blocks from Shadow Copy Buffer (Section 3.3). For the trace-driven evaluation of Figure 7, CASCADE over TCP without INT8 retrieved 160MB blocks in 63ms to 71ms, against 211ms to 218ms for LMCache (Disk) and PDC.
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowered retrieval latency at every block size and node count, from 47ms to 19ms for 160MB blocks on 4 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half of the DRAM of FP16 (Section 3.3).
 
@@ -18,7 +18,7 @@
 
 #### Q2-Ans)
 
-**Quality.** Per-layer INT8 did not lower output quality. Each INT8 copy uses one scale and zero point per layer for keys and for values. With this quantization, CASCADE scored an F1 of 40.0 on 280 questions from six English question answering tasks of LongBench. Without compression, CASCADE scored 39.5, and vLLM GPU scored 40.2. Per-layer INT8 changed 7% of the answers of vLLM GPU, against 8% between repeated runs of vLLM GPU. In contrast, one scale per block lowered the F1 score to 38.9 and changed 28% of the answers.
+**Quality.** Per-layer INT8 did not lower output quality. Each INT8 copy uses one scale and zero point per layer for keys and for values. On 280 questions from six English question answering tasks of LongBench, the F1 score was 40.0 for CASCADE with INT8, 39.5 without compression, and 40.2 for vLLM GPU. Per-layer INT8 changed 7% of the answers of vLLM GPU, against 8% between repeated runs of vLLM GPU. In contrast, one scale per block changed 28% of these answers.
 
 **Generation.** Since CASCADE compresses only block copies outside GPU HBM, decoding reads FP16 blocks in GPU HBM (Section 3.3). With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE took 48ms to 50ms per token against 53ms for vLLM GPU. Since CASCADE retrieved 99.9% of the prompt tokens, its TTFT was 14s to 17s against 55s to 57s. As a result, its full request time was 20s to 22s against 62s to 64s.
 
@@ -62,4 +62,4 @@ Salting is optional in CASCADE and set per request by the serving layer, which c
 
 #### Q6-3-Ans) Workload and statistics (RA, RB, RD)
 
-The E2E runs route each request to a prefix cached on another node. As a result, node-local caches, such as the CPU cache of vLLM CPU offload in Figure 16, miss these prefixes. Over three or more runs, the TTFT of CASCADE and Mooncake had a coefficient of variation of at most 11%.
+The E2E runs route each request to a prefix cached on another node, so node-local caches such as vLLM CPU offload miss in Figure 16. Over three or more runs, the TTFT of CASCADE and Mooncake had a coefficient of variation of at most 11%.
