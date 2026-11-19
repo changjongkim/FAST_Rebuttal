@@ -47,7 +47,7 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 **Logical partitioning.** Within each replica, a Block ID hash selects a GPU ID and then its shard. Thus, under full replication, sharding replaces one global lock with one lock per shard, so Index Merger and lookups contend only within a shard.
 
-**Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers blocks still being stored. Each Block ID also hashes the model, LoRA adapter, KV data type and layout, tensor-parallel rank and size, and block size.
+**Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers blocks still being stored. Each Block ID also hashes the model, LoRA adapter, KV dtype/layout, tensor-parallel rank/size, and block size.
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
