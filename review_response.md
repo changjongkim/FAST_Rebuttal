@@ -13,7 +13,7 @@
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowers retrieval latency at every block size and node count, from 100ms to 38ms for 320MB blocks on 32 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half the DRAM of FP16.
 
-**Block size.** Without compression, trace-driven retrieval latency increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks. With the 256-token blocks of the peers in place of 16-token vLLM pages, CASCADE over TCP has a TTFT of 0.98-0.99s on 2-8 nodes. All three systems reuse about 99% of prompt tokens. On 8 nodes, CASCADE's speedups increase from 8.6× and 3.7× to 9.5× and 4.1×.
+**Block size.** Without compression, trace-driven retrieval latency increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks. With the 256-token blocks of the peers in place of 16-token vLLM pages, CASCADE over TCP has a TTFT of 0.97-0.99s on 2-16 nodes. All three systems reuse about 99% of prompt tokens. On 8 nodes, CASCADE's speedups increase from 8.6× and 3.7× to 9.5× and 4.1×.
 
 
 #### Q2-Ans)
