@@ -9,7 +9,7 @@
 
 #### Q1-Ans)
 
-**Networking.** CASCADE outperforms the peers without RDMA. We ran CASCADE with MPI over TCP, the transport of the peers, in the 64K-prefix weak scaling of Figure 14. On 8 nodes, CASCADE over TCP achieved 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remained 1.09s to 1.12s on 2 to 8 nodes, while that of Mooncake increased from 1.37s to 9.31s. The peers locate each block through centralized coordination. In contrast, CASCADE resolves locations in its local Global Shard Index replica. For the trace-driven evaluation of Figure 7, CASCADE over TCP without INT8 retrieved 160MB blocks in 63ms to 71ms, against 211ms to 218ms for LMCache (Disk) and PDC.
+**Networking.** CASCADE outperforms the peers without RDMA. We ran CASCADE with MPI over TCP, the transport of the peers, in the 64K-prefix weak scaling of Figure 14. On 8 nodes, CASCADE over TCP achieved 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remained 1.09-1.12s on 2-8 nodes, while that of Mooncake increased from 1.37s to 9.31s. The peers locate each block through centralized coordination. In contrast, CASCADE resolves locations in its local Global Shard Index replica. For the trace-driven evaluation of Figure 7, CASCADE over TCP without INT8 retrieved 160MB blocks in 63-71ms, against 211-218ms for LMCache (Disk) and PDC.
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowered retrieval latency at every block size and node count, from 47ms to 19ms for 160MB blocks on 4 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half of the DRAM of FP16 (Section 3.3).
 
@@ -20,7 +20,7 @@
 
 **Quality.** Per-layer INT8, with one scale and zero point per layer for keys and for values, did not lower output quality. On 280 questions from six English LongBench question answering tasks, the F1 score was 40.0 for CASCADE with INT8, 39.5 without compression, and 40.2 for vLLM GPU. Per-layer INT8 changed 7% of the answers of vLLM GPU, against 8% between repeated runs of vLLM GPU. In contrast, one scale per block lowered the F1 score to 38.9 and changed 28% of the answers.
 
-**Generation.** Since CASCADE compresses only block copies outside GPU HBM, decoding reads FP16 blocks in GPU HBM (Section 3.3). With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE took 48ms to 50ms per token against 53ms for vLLM GPU. As CASCADE retrieved 99.9% of the prompt tokens, its full request time was 20s to 22s against 62s to 64s.
+**Generation.** Since CASCADE compresses only block copies outside GPU HBM, decoding reads FP16 blocks in GPU HBM (Section 3.3). With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE took 48-50ms per token against 53ms for vLLM GPU. As CASCADE retrieved 99.9% of the prompt tokens, its full request time was 20-22s against 62-64s.
 
 
 #### Q3-Ans)
@@ -39,7 +39,7 @@ While our paper targets fixed HPC allocations, the decentralized Global Shard In
 
 #### Q5-Ans)
 
-Salting is optional in CASCADE and set per request by the serving layer, which can assign each tenant a secret salt. With secret salts per tenant, TTFT does not reveal the prompts of another tenant. A salt in the first block changes every chained Block ID, so requests with different salts share no cached prefix. We ran four concurrent requests per node with 64K prefixes and one output token on 2 to 8 nodes. Requests with one shared salt reused 99.9% of prompt tokens at a TTFT of 7.5s to 8.9s. In contrast, requests with another tenant's salt reused no prefix at a TTFT of 48.4s to 49.7s, no faster than recomputation.
+Salting is optional in CASCADE and set per request by the serving layer, which can assign each tenant a secret salt. With secret salts per tenant, TTFT does not reveal the prompts of another tenant. A salt in the first block changes every chained Block ID, so requests with different salts share no cached prefix. We ran four concurrent requests per node with 64K prefixes and one output token on 2-8 nodes. Requests with one shared salt reused 99.9% of prompt tokens at a TTFT of 7.5-8.9s. In contrast, requests with another tenant's salt reused no prefix at a TTFT of 48.4-49.7s, no faster than recomputation.
 
 ---
 
