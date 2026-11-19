@@ -40,7 +40,7 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 ---
 
-#### Q6-1-Ans) Global Shard Index (RA, RB, RD)
+#### Q6-1-Ans) Global Shard Index (RA,RB,RD)
 
 **Replica placement.** Every node resolves block locations in its full, nonpersistent replica of Global Shard Index in host DRAM, which covers GPU HBM, DRAM, and Lustre.
 
@@ -50,14 +50,13 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 **Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers unfinished stores. Each Block ID also hashes the model, LoRA adapter, KV dtype/layout, tensor-parallel rank/size, and block size.
 
-#### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
+#### Q6-2-Ans) Consistency and metadata scaling (RA,RB)
 
 Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any entry without consensus. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
 
 On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. Under stress loads of 10K and 100K new 4KB blocks per node per interval, Metadata Sync on 4 nodes takes at most 41ms and 569ms. In contrast, E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches.
 
 
-#### Q6-3-Ans) Workload and statistics (RA, RB, RD)
+#### Q6-3-Ans) Workload and statistics (RA,RB,RD)
 
 E2E requests use prefixes cached on other nodes, so vLLM CPU offload misses in Figure 16. In contrast, Figure 12b lowers sharing to 10% at 10× the 1.02TB GPU tier, where CASCADE retains 99.4% of prefix blocks against 45.5-85.8% for the baselines. Over three or more runs, the TTFT of CASCADE and Mooncake has a coefficient of variation of at most 11%.
-
