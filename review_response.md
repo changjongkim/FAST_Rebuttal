@@ -27,7 +27,7 @@ Decoding reads FP16 blocks in GPU HBM, since CASCADE compresses only copies outs
 
 Since each Block ID hashes its tokens with the preceding Block ID, CASCADE reuses a prefix up to the last complete block before divergence. With 16-token blocks, at most 15 shared tokens are recomputed.
 
-CASCADE can delete a Lustre aggregate file once Metadata Sync propagates invalidations of all its blocks. For a partially valid file, Eviction Manager can be extended to count valid blocks and invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, deleting the file copies none, at the cost of later recomputation.
+CASCADE can delete a Lustre aggregate file once Metadata Sync propagates invalidations of all its blocks. For a partially valid file, Eviction Manager can be extended to count valid blocks and invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, file deletion copies no block, at the cost of later recomputation.
 
 #### Q4-Ans)
 
@@ -51,7 +51,7 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
-Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost, stale, or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any entry without coordination. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
+Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any entry without coordination. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
 
 On 2-8 nodes, Metadata Sync takes about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node, it takes at most 41ms and 569ms. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches. Our E2E runs create fewer than 100 blocks per node per interval.
 
