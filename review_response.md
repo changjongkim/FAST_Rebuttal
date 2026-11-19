@@ -35,7 +35,8 @@ CASCADE targets fixed HPC allocations, but its decentralized Global Shard Index 
 
 #### Q5-Ans)
 
-Salting is optional and set per request by the serving layer, which can assign each tenant a secret salt. With secret salts per tenant, TTFT does not reveal whether another tenant used the same prompt. A salt in the first block changes every chained Block ID, so requests with different salts share no cached prefix. We run four requests per node with 64K prefixes on 2-8 nodes. Requests with one shared salt reuse 99.9% of prompt tokens at a TTFT of 7.5-8.9s. In contrast, requests with another tenant's salt reuse no prefix at a TTFT of 48.4-49.7s, no faster than recomputation.
+Salting is optional and set per request by the serving layer, which can assign each tenant a secret salt. With secret salts per tenant, TTFT does not reveal whether another tenant used the same prompt. A salt in the first block changes every chained Block ID, so requests with different salts share no cached prefix. We run four concurrent requests per node with 64K prefixes and one output token on 2-8 nodes. Requests with one shared salt reuse 99.9% of prompt tokens at a TTFT of 7.5-8.9s. In contrast, requests with another tenant's salt reuse no prefix at a TTFT of 48.4-49.7s, no faster than recomputation.
+
 
 
 ---
@@ -54,9 +55,11 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any entry without consensus. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
 
-On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. Under stress loads of 10K and 100K new 4KB blocks per node per interval, Metadata Sync on 4 nodes takes at most 41ms and 569ms. In contrast, E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches.
+On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test, it takes at most 41ms and 569ms for 10K and 100K new 4KB blocks per node. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches.
+
 
 
 #### Q6-3-Ans) Workload and statistics (RA,RB,RD)
 
-E2E requests use prefixes cached on other nodes, so vLLM CPU offload misses in Figure 16. In contrast, Figure 12b lowers sharing to 10% at 10× the 1.02TB GPU tier, where CASCADE retains 99.4% of prefix blocks against 45.5-85.8% for the baselines. Over three or more runs, the TTFT of CASCADE and Mooncake has a coefficient of variation of at most 11%.
+E2E requests use prefixes cached on other nodes, so vLLM CPU offload misses in Figure 16. With 10% sharing in Figure 12b, CASCADE retains 99.4% of prefix blocks against 45.5-85.8% for baselines. Over three or more runs, the TTFT coefficient of variation of CASCADE and Mooncake is at most 11%.
+
