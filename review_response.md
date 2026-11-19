@@ -61,5 +61,4 @@ On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.
 
 #### Q6-3-Ans) Workload and statistics (RA,RB,RD)
 
-E2E requests use prefixes cached on other nodes, so vLLM CPU offload misses in Figure 16. With 10% sharing in Figure 12b, CASCADE retains 99.4% of prefix blocks against 45.5-85.8% for baselines. Over three or more runs, the TTFT coefficient of variation of CASCADE and Mooncake is at most 11%.
-
+E2E requests use prefixes cached on other nodes, so vLLM CPU offload misses in Figure 16. With 10% sharing in Figure 12b, CASCADE retains 99.4% of prefix blocks, compared with 45.5- 85.8% for baselines. Over three or more runs, the TTFT coefficient of variation for CASCADE and Mooncake is at most 11%.
