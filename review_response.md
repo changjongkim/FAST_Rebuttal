@@ -13,7 +13,7 @@
 
 **Compression.** CASCADE's gains do not depend on compression. In the trace-driven runs over RDMA, disabling INT8 lowers retrieval latency at every block size and node count, from 100ms to 38ms for 320MB blocks on 32 nodes. INT8 expands capacity, since an INT8 copy uses half the DRAM of FP16 at the cost of decompression.
 
-**Block size.** Without compression, the retrieval latency of CASCADE increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks in trace-driven runs. In the E2E runs with the peers' 256-token blocks in place of 16-token vLLM pages, its TTFT over TCP decreases from 1.23-2.18s to 0.97-0.99s on 2-16 nodes. CASCADE, Mooncake, and LMCache (P2P) all reuse about 99% of prompt tokens. On 8 nodes, CASCADE achieves 9.5× and 4.1× speedups over the two peers.
+**Block size.** Without compression, the retrieval latency of CASCADE increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks in trace-driven runs. In the E2E runs with the peers' 256-token blocks in place of 16-token vLLM pages, its TTFT over TCP decreases from 1.23-2.18s to 0.97-0.99s on 2-32 nodes. CASCADE, Mooncake, and LMCache (P2P) all reuse about 99% of prompt tokens. On 8 nodes, CASCADE achieves 9.5× and 4.1× speedups over the two peers.
 
 #### Q2-Ans)
 
