@@ -9,7 +9,7 @@
 
 #### Q1-Ans)
 
-**Networking.** CASCADE outperforms the peers without RDMA. We run CASCADE with MPI over TCP, the peers' transport, on 2-32 nodes. With the 64K prefixes of Figure 14, its TTFT remains 1.08-1.12s, while that of Mooncake increases from 1.37s to 25.94s. On 32 nodes, CASCADE achieves 24.0× and 13.4× TTFT speedups over Mooncake and LMCache (P2P). CASCADE resolves locations in its local Global Shard Index replica, without the centralized coordination of the peers. In the trace-driven Figure 7, CASCADE over TCP without INT8 retrieves 160MB blocks in 63-71ms, against 211-218ms for LMCache (Disk) and PDC. Over RDMA, the same retrieval takes 19-22ms.
+**Networking.** CASCADE outperforms the peers without RDMA. We run CASCADE with MPI over TCP, the peers' transport, on 2-32 nodes. With the 64K prefixes of Figure 14, its TTFT remains 1.23-2.18s, while that of Mooncake increases from 1.37s to 25.94s. On 32 nodes, CASCADE achieves 11.9× and 6.6× TTFT speedups over Mooncake and LMCache (P2P). CASCADE resolves locations in its local Global Shard Index replica, without the centralized coordination of the peers. In the trace-driven Figure 7, CASCADE over TCP without INT8 retrieves 160MB blocks in 63-71ms, against 211-218ms for LMCache (Disk) and PDC. Over RDMA, the same retrieval takes 19-22ms.
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowers retrieval latency at every block size and node count, from 100ms to 38ms for 320MB blocks on 32 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half the DRAM of FP16.
 
