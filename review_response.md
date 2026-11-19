@@ -25,7 +25,7 @@ Decoding reads FP16 blocks in GPU HBM, since CASCADE compresses only copies outs
 
 #### Q3-Ans)
 
-Since each Block ID hashes its tokens with the preceding Block ID, CASCADE reuses a prefix up to the last complete block before divergence. With 16-token blocks, at most 15 shared tokens are recomputed.
+Since each BlockID hashes its tokens with the preceding BlockID, CASCADE reuses a prefix up to the last complete block before divergence. With 16-token blocks, at most 15 shared tokens are recomputed.
 
 CASCADE can delete a Lustre aggregate file once Metadata Sync propagates invalidations of all its blocks. For a partially valid file, Eviction Manager can be extended to count valid blocks and invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, file deletion copies no block, at the cost of later recomputation.
 
@@ -35,7 +35,7 @@ CASCADE targets fixed HPC allocations, but its decentralized Global Shard Index 
 
 #### Q5-Ans)
 
-Salting is optional and set per request by the serving layer, which can assign each tenant a secret salt. With secret salts per tenant, TTFT does not reveal whether another tenant used the same prompt. A salt in the first block changes every chained Block ID, so requests with different salts share no cached prefix. We run four concurrent requests per node with 64K prefixes and one output token on 2-8 nodes. Requests with one shared salt reuse 99.9% of prompt tokens at a TTFT of 7.5-8.9s. In contrast, requests with another tenant's salt reuse no prefix at a TTFT of 48.4-49.7s, no faster than recomputation.
+Salting is optional and set per request by the serving layer, which can assign each tenant a secret salt. With secret salts per tenant, TTFT does not reveal whether another tenant used the same prompt. A salt in the first block changes every chained BlockID, so requests with different salts share no cached prefix. We run four concurrent requests per node with 64K prefixes and one output token on 2-8 nodes. Requests with one shared salt reuse 99.9% of prompt tokens at a TTFT of 7.5-8.9s. In contrast, requests with another tenant's salt reuse no prefix at a TTFT of 48.4-49.7s, no faster than recomputation.
 
 
 
@@ -47,15 +47,15 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 **Update ownership.** Only the node storing a block writes its entry, which Metadata Sync copies to every replica.
 
-**Logical partitioning.** Within each replica, a Block ID hash selects a GPU ID and then its shard. Thus, under full replication, sharding replaces one global lock with per-shard locks, so Index Merger and lookups contend only within a shard.
+**Logical partitioning.** Within each replica, a BlockID hash selects a GPUID and then its shard. Thus, under full replication, sharding replaces one global lock with per-shard locks, so Index Merger and lookups contend only within a shard.
 
-**Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers unfinished stores. Each Block ID also hashes the model, LoRA adapter, KV dtype/layout, tensor-parallel rank/size, and block size.
+**Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers unfinished stores. Each BlockID also hashes the model, LoRA adapter, KV dtype/layout, tensor-parallel rank/size, and block size.
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA,RB)
 
-Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any entry without consensus. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
+Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one BlockID produce equivalent copies, so Metadata Sync accepts any entry without consensus. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested BlockID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
 
-On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test, it takes at most 41ms and 569ms for 10K and 100K new 4KB blocks per node. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches.
+On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test, it takes at most 41ms and 569ms for 10K and 100K new 4KB blocks per node. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals. E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without BlockID mismatches.
 
 
 
