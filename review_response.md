@@ -9,11 +9,11 @@
 
 #### Q1-Ans)
 
-**Networking.** CASCADE outperforms the peers without RDMA. We run CASCADE with MPI over TCP, the peers' transport, on the 64K prefixes of Figure 14. On 8 nodes, it achieves 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remains 1.08-1.12s on 2-32 nodes, while that of Mooncake increases from 1.37s to 25.94s. CASCADE resolves locations in its local Global Shard Index replica, without the centralized coordination of the peers. In the trace-driven Figure 7, CASCADE over TCP without INT8 retrieves 160MB blocks in 63-71ms on 2-32 nodes, against 211-218ms for LMCache (Disk) and PDC. Over RDMA, the same retrieval takes 19-22ms.
+**Networking.** CASCADE outperforms the peers without RDMA. We run CASCADE with MPI over TCP, the peers' transport, on 2-32 nodes. With the 64K prefixes of Figure 14, its TTFT remains 1.08-1.12s, while that of Mooncake increases from 1.37s to 25.94s. On 32 nodes, CASCADE achieves 24.0× and 13.4× TTFT speedups over Mooncake and LMCache (P2P). CASCADE resolves locations in its local Global Shard Index replica, without the centralized coordination of the peers. In the trace-driven Figure 7, CASCADE over TCP without INT8 retrieves 160MB blocks in 63-71ms, against 211-218ms for LMCache (Disk) and PDC. Over RDMA, the same retrieval takes 19-22ms.
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowers retrieval latency at every block size and node count, from 100ms to 38ms for 320MB blocks on 32 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half the DRAM of FP16.
 
-**Block size.** Without compression, trace-driven retrieval latency increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks. With the 256-token blocks of the peers in place of 16-token vLLM pages, CASCADE over TCP has a TTFT of 0.98-0.99s on 2-8 nodes. All three systems reuse about 99% of prompt tokens. On 8 nodes, the speedups of CASCADE increase to 9.5× and 4.1×.
+**Block size.** Without compression, trace-driven retrieval latency increases in proportion to block size, from 5ms for 40MB to 38ms for 320MB blocks. With the 256-token blocks of the peers in place of 16-token vLLM pages, CASCADE over TCP has a TTFT of 0.98-0.99s on 2-8 nodes. All three systems reuse about 99% of prompt tokens. On 8 nodes, CASCADE's speedups increase from 8.6× and 3.7× to 9.5× and 4.1×.
 
 
 #### Q2-Ans)
