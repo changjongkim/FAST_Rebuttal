@@ -7,8 +7,6 @@
 
 ---
 
-CASCADE treats KV blocks as derived data, since inference can recompute each block from its tokens and model, which its Block ID hashes. Thus, CASCADE enforces correctness strictly and treats availability as best effort. Every returned block passes Block ID and checksum validation, and a lost, stale, or overwritten block becomes a miss. In large-scale inference, guaranteeing availability through durable copies and crash-consistent reclamation requires coordination that increases with node count, whereas a miss only recomputes the missed blocks.
-
 #### Q1-Ans)
 
 **Networking.** CASCADE outperforms the peers without RDMA. We ran CASCADE with MPI over TCP, the transport of the peers, in the weak-scaling setup of Figure 14 with 64K prefixes. On 8 nodes, CASCADE over TCP achieved 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remained 1.09s to 1.12s on 2 to 8 nodes, while the TTFT of Mooncake increased from 1.37s to 9.31s. The peers locate each block through centralized coordination. In contrast, CASCADE resolves locations in its local Global Shard Index replica and reuses retrieved blocks from Shadow Copy Buffer (Section 3.3). For the trace-driven evaluation of Figure 7, CASCADE over TCP without INT8 retrieved 160MB blocks in 63ms to 71ms, against 211ms to 218ms for LMCache (Disk) and PDC.
@@ -35,7 +33,7 @@ CASCADE treats KV blocks as derived data, since inference can recompute each blo
 
 While our paper targets HPC allocations with fixed nodes, the decentralized Global Shard Index of CASCADE can support node failures and dynamic scaling.
 
-**Node failures.** The remaining nodes can rebuild the communicator and RDMA Windows with a fault-tolerant MPI runtime. These nodes can then invalidate the entries of the failed node, whose blocks CASCADE recomputes.
+**Node failures.** The remaining nodes can rebuild the communicator and RDMA Windows with a fault-tolerant MPI runtime. These nodes can then invalidate the entries of the failed node, whose blocks CASCADE recomputes. In large-scale inference, durable copies would avoid this recomputation but require coordination that increases with node count.
 
 **Dynamic scaling.** A new node can receive the current Global Shard Index and join Metadata Sync without moving any stored block.
 
@@ -57,7 +55,7 @@ Salting is optional in CASCADE and set per request by the serving layer, which c
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
-**Consistency.** Since concurrent PUTs of the same Block ID produce equivalent copies, Metadata Sync can accept any one of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer (Algorithm 1). Each invalidation removes an entry only while the entry names the invalidating node. After an RDMA READ, the reader validates the block against the requested Block ID and its recorded checksum (Section 3.3). With this validation, a node reuses a buffer slot without waiting for outstanding RDMA READs. A read during or after the reuse either returns the requested block or fails validation and triggers recomputation.
+**Consistency.** Since inference can recompute any KV block from its tokens and model, CASCADE enforces correctness strictly and treats availability as best effort. A lost, stale, or overwritten block becomes a miss. Concurrent PUTs of the same Block ID produce equivalent copies, so Metadata Sync can accept any one of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer (Algorithm 1). Each invalidation removes an entry only while the entry names the invalidating node. After an RDMA READ, the reader validates the block against the requested Block ID and its recorded checksum (Section 3.3). With this validation, a node reuses a buffer slot without waiting for outstanding RDMA READs. A read during or after the reuse either returns the requested block or fails validation and triggers recomputation.
 
 **Metadata scaling.** Across 2, 4, and 8 nodes, Metadata Sync took about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node per interval, it took at most 41ms and 569ms. Reads before each sync missed, and all 72,000 reads after it hit with 0 Block ID mismatches. Our 4-node E2E runs created fewer than 100 blocks per node per interval, under 1% of the 10K blocks of the stress test.
 
