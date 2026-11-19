@@ -7,13 +7,15 @@
 
 ---
 
+CASCADE treats KV blocks as derived data, since inference can recompute each block from its tokens and model, which its Block ID hashes. Thus, CASCADE enforces correctness strictly and treats availability as best effort. Every returned block passes Block ID and checksum validation, and a lost, stale, or overwritten block becomes a miss. In large-scale inference, guaranteeing availability through durable copies and crash-consistent reclamation requires coordination that increases with node count, whereas a miss only recomputes the missed blocks.
+
 #### Q1-Ans)
 
-**Networking.** CASCADE outperforms the peers without RDMA, and RDMA further lowers its retrieval latency. We ran CASCADE with MPI over TCP, the transport of the peers, in the weak-scaling setup of Figure 14 with 64K prefixes. On 8 nodes, CASCADE over TCP achieved 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remained 1.09s to 1.12s on 2 to 8 nodes, while the TTFT of Mooncake increased from 1.37s to 9.31s. The peers locate each block through centralized coordination. In contrast, CASCADE resolves locations in its local Global Shard Index replica and reuses retrieved blocks from Shadow Copy Buffer (Section 3.3). For the trace-driven evaluation of Figure 7, CASCADE over TCP without INT8 retrieved 160MB blocks in 63ms to 71ms, against 211ms to 218ms for LMCache (Disk) and PDC. Over RDMA, the same retrieval took 19ms to 22ms.
+**Networking.** CASCADE outperforms the peers without RDMA. We ran CASCADE with MPI over TCP, the transport of the peers, in the weak-scaling setup of Figure 14 with 64K prefixes. On 8 nodes, CASCADE over TCP achieved 8.6× and 3.7× TTFT speedups over Mooncake and LMCache (P2P). Its TTFT remained 1.09s to 1.12s on 2 to 8 nodes, while the TTFT of Mooncake increased from 1.37s to 9.31s. The peers locate each block through centralized coordination. In contrast, CASCADE resolves locations in its local Global Shard Index replica and reuses retrieved blocks from Shadow Copy Buffer (Section 3.3). For the trace-driven evaluation of Figure 7, CASCADE over TCP without INT8 retrieved 160MB blocks in 63ms to 71ms, against 211ms to 218ms for LMCache (Disk) and PDC.
 
 **Compression.** The trace-driven gains do not depend on compression. Over RDMA, disabling INT8 lowered retrieval latency at every block size and node count, from 47ms to 19ms for 160MB blocks on 4 nodes. The benefit of INT8 is capacity, since an INT8 copy uses half of the DRAM of FP16 (Section 3.3).
 
-**Block size.** The trace-driven evaluation uses 160MB and 320MB blocks of 512 and 1024 tokens. Without compression, its retrieval latency increased in proportion to block size, from 5ms for 40MB blocks to 38ms for 320MB blocks. In contrast, the E2E runs above stored each 16-token vLLM page as one CASCADE block. With the same 256-token blocks as the peers, CASCADE over TCP had a TTFT of 0.98s to 0.99s on 2 to 8 nodes. All three systems reused about 99% of prompt tokens. On 8 nodes, the speedups of CASCADE over Mooncake and LMCache (P2P) increased to 9.5× and 4.1×.
+**Block size.** Without compression, trace-driven retrieval latency increased in proportion to block size, from 5ms for 40MB blocks to 38ms for 320MB blocks of 1024 tokens. In contrast, the E2E runs above stored each 16-token vLLM page as one CASCADE block. With the same 256-token blocks as the peers, CASCADE over TCP had a TTFT of 0.98s to 0.99s on 2 to 8 nodes. All three systems reused about 99% of prompt tokens. On 8 nodes, the speedups of CASCADE over Mooncake and LMCache (P2P) increased to 9.5× and 4.1×.
 
 
 #### Q2-Ans)
@@ -27,7 +29,7 @@
 
 **Partial chunks.** CASCADE reuses a prefix up to the last complete block before divergence, since each Block ID hashes its tokens with the preceding Block ID. With 16-token blocks, CASCADE recomputes at most 15 shared tokens at a divergence.
 
-**Obsolete data.** CASCADE can delete an aggregate file on Lustre once Metadata Sync has propagated the invalidation of all its blocks. For a partially valid file, Eviction Manager can be extended to count its valid blocks. Once this count decreases below a threshold, Aggregated File Writer can append these blocks to a new aggregate file. After Metadata Sync propagates their new locations, CASCADE can delete the old file. Thus, reclaiming a partially valid file copies fewer blocks than the threshold.
+**Obsolete data.** CASCADE can delete an aggregate file on Lustre once Metadata Sync has propagated the invalidation of all its blocks. For a partially valid file, Eviction Manager can be extended to count its valid blocks. Once this count decreases below a threshold, Eviction Manager can invalidate these blocks and delete the file. Since these blocks only become misses, this reclamation adds no storage traffic.
 
 #### Q4-Ans)
 
@@ -49,15 +51,15 @@ Salting is optional in CASCADE and set per request by the serving layer, which c
 
 **Update ownership.** Only the node that stores a block writes its entry, and Metadata Sync copies the entry to every replica.
 
-**Logical partitioning.** Within each replica, the hash of a Block ID selects a GPU ID and then its shard, one per GPU. Each shard has its own lock, so Index Merger updates one shard while lookups on the other shards proceed. Thus, under full replication, sharding replaces one global lock with one lock per shard, and Metadata Sync and lookups contend only within a shard.
+**Logical partitioning.** Within each replica, the hash of a Block ID selects a GPU ID and then its shard, one per GPU. Each shard has its own lock. Thus, under full replication, sharding replaces one global lock with one lock per shard, so Index Merger and lookups contend only within a shard.
 
-**Deduplication.** Since block movement does not change whether a copy exists, the PUT check on Dedup Map remains valid. Global deduplication avoids 57 to 66% of block writes (Table 3). Each Block ID also hashes the model, LoRA adapter, KV data type and layout, tensor-parallel rank and size, and block size.
+**Deduplication.** Global deduplication avoids 57 to 66% of block writes (Table 3). Each Block ID also hashes the model, LoRA adapter, KV data type and layout, tensor-parallel rank and size, and block size.
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
-**Consistency.** Stale metadata can lower the cache hit rate, but no request uses a wrong block. Since concurrent PUTs of the same Block ID produce equivalent copies, Metadata Sync can accept any one of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer (Algorithm 1). Each invalidation removes an entry only while the entry names the invalidating node. After an RDMA READ, the reader validates the stored Block ID and payload checksum against the requested Block ID and its recorded checksum (Section 3.3). With this validation, a node reuses a buffer slot without waiting for outstanding RDMA READs. A read during or after the reuse either returns the requested block or fails validation and triggers recomputation.
+**Consistency.** Since concurrent PUTs of the same Block ID produce equivalent copies, Metadata Sync can accept any one of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer (Algorithm 1). Each invalidation removes an entry only while the entry names the invalidating node. After an RDMA READ, the reader validates the block against the requested Block ID and its recorded checksum (Section 3.3). With this validation, a node reuses a buffer slot without waiting for outstanding RDMA READs. A read during or after the reuse either returns the requested block or fails validation and triggers recomputation.
 
-**Metadata scaling.** Across 2, 4, and 8 nodes, Metadata Sync took about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node per interval, it took at most 41ms and 569ms. At 100K blocks per second per node, these loads correspond to intervals of 100ms and 1000ms. Reads before each sync missed, and all 72,000 reads after it hit with 0 Block ID mismatches. Our 4-node E2E runs created fewer than 100 blocks per node per interval, under 1% of the 10K blocks of the stress test.
+**Metadata scaling.** Across 2, 4, and 8 nodes, Metadata Sync took about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node per interval, it took at most 41ms and 569ms. Reads before each sync missed, and all 72,000 reads after it hit with 0 Block ID mismatches. Our 4-node E2E runs created fewer than 100 blocks per node per interval, under 1% of the 10K blocks of the stress test.
 
 
 #### Q6-3-Ans) Workload and statistics (RA, RB, RD)
