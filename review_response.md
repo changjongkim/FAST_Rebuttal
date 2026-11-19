@@ -18,16 +18,16 @@
 
 #### Q2-Ans)
 
-Per-layer INT8, with one scale and zero point per layer, does not lower output quality. On 280 questions from six English LongBench QA tasks, the F1 score is 40.0 for CASCADE with INT8, 39.5 without compression, and 40.2 for vLLM GPU. Per-layer INT8 changes 7% of the answers of vLLM GPU, against 8% between its repeated runs. In contrast, one scale per block lowers the F1 score to 38.9 and changes 28% of the answers.
+Per-layer INT8 does not lower output quality. On 280 questions from six English LongBench QA tasks, the F1 score is 40.0 for CASCADE with INT8, 39.5 without compression, and 40.2 for vLLM GPU. Per-layer INT8 changes 7% of the answers of vLLM GPU, against 8% between its repeated runs. In contrast, one scale per block lowers the F1 score to 38.9 and changes 28% of the answers.
 
-Since CASCADE compresses only block copies outside GPU HBM, decoding reads FP16 blocks in GPU HBM. With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE takes 48-50ms per token against 53ms for vLLM GPU. As CASCADE retrieves 99.9% of the prompt tokens, its TTFT is 14-17s against 55-57s, and its full request time is 20-22s against 62-64s.
+Decoding reads FP16 blocks in GPU HBM, since CASCADE compresses only copies outside HBM. With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE takes 48-50ms per token against 53ms for vLLM GPU. As CASCADE retrieves 99.9% of the prompt tokens, its TTFT is 14-17s against 55-57s, and its full request time is 20-22s against 62-64s.
 
 
 #### Q3-Ans)
 
 Since each Block ID hashes its tokens with the preceding Block ID, CASCADE reuses a prefix up to the last complete block before divergence. With 16-token blocks, at most 15 shared tokens are recomputed.
 
-CASCADE can delete an aggregate file on Lustre once Metadata Sync has propagated the invalidation of all its blocks. For a partially valid file, Eviction Manager can be extended to count valid blocks and invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, deleting the file copies none of them, at the cost of later recomputation.
+CASCADE can delete a Lustre aggregate file once Metadata Sync propagates the invalidation of all its blocks. For a partially valid file, Eviction Manager can be extended to count valid blocks and invalidate them once the count decreases below a threshold. Since invalidated blocks only become misses, deleting the file copies none of them, at the cost of later recomputation.
 
 #### Q4-Ans)
 
@@ -51,9 +51,9 @@ Salting is optional and set per request by the serving layer, which can assign e
 
 #### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
-Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost, stale, or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any of their entries without coordination. A node publishes a location only after storing the block in Shadow Copy Buffer and invalidates only the entries that name it. After an RDMA READ, the reader validates the block against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and becomes a miss.
+Since inference can recompute any KV block, CASCADE enforces correctness strictly and treats availability as best effort, and a lost, stale, or overwritten block becomes a miss. Concurrent PUTs of one Block ID produce equivalent copies, so Metadata Sync accepts any of their entries without coordination. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and becomes a miss.
 
-Across 2, 4, and 8 nodes, Metadata Sync takes about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node, it takes at most 41ms and 569ms. At 100K blocks per second per node, the loads equal intervals of 100ms and 1000ms. Reads before each sync miss, and all 72,000 reads after it hit with 0 Block ID mismatches. Our E2E runs create fewer than 100 blocks per node per interval.
+On 2-8 nodes, Metadata Sync takes about 1µs per merged delta, including 0.3µs for Dedup Map. In a 4-node stress test with 10K and 100K new 4KB blocks per node, it takes at most 41ms and 569ms. At 100K blocks per second per node, the loads equal intervals of 100ms and 1000ms. Reads before each sync miss, and all 72,000 reads after it hit without Block ID mismatches. Our E2E runs create fewer than 100 blocks per node per interval.
 
 
 #### Q6-3-Ans) Workload and statistics (RA, RB, RD)
