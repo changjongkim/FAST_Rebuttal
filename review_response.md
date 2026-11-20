@@ -16,7 +16,7 @@
 
 #### Q2-Ans)
 
-CASCADE maintains measured QA quality with per-layer INT8 offload. Using one scale and zero point per layer for keys and values, F1 across 280 answers to 160 unique questions from six English LongBench v1 QA tasks is 40.0 with INT8, 39.5 uncompressed, and 40.2 with vLLM GPU. The 2/4/8-node runs evaluate 40/80/160 questions, respectively. Pass-two nodes lack these documents' KV in HBM. All 826,052 retrieved blocks undergo INT8-to-FP16 restoration, covering 94.7% of prompt tokens. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. Per-block scaling instead yields F1 38.9 and 28% answer disagreement.
+CASCADE maintains measured QA quality with per-layer INT8 offload. Using one scale and zero point per layer for keys and values, F1 across 280 answers to 160 unique questions from six English LongBench QA tasks is 40.0 with INT8, 39.5 uncompressed, and 40.2 with vLLM GPU. The 2/4/8-node runs evaluate 40/80/160 questions, respectively. Pass-two nodes lack these documents' KV in HBM. All 826,052 retrieved blocks undergo INT8-to-FP16 restoration, covering 94.7% of prompt tokens. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. Per-block scaling instead yields F1 38.9 and 28% answer disagreement.
 
 Decoding reads FP16 blocks in HBM, as compression applies only outside HBM. With four concurrent requests/node, 64K prefixes, and 128 output tokens, CASCADE takes 48–50ms/token against 53ms for vLLM GPU. With 99.9% prompt reuse, CASCADE's TTFT is 14–17s against 55–57s and full request time is 20–22s against 62–64s.
 
