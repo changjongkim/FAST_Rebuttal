@@ -32,26 +32,23 @@ CASCADE targets fixed HPC allocations, but its decentralized Global Shard Index 
 
 #### Q5-Ans)
 
-Salting is optional and set per request by the serving layer, which can assign each tenant a secret salt. With secret salts per tenant, TTFT does not reveal whether another tenant used the same prompt. A salt in the first block changes every chained BlockID, so requests with different salts share no cached prefix. We run four concurrent requests per node with 64K prefixes and one output token on 2-8 nodes. Requests with one shared salt reuse 99.9% of prompt tokens at a TTFT of 7.5-8.9s. In contrast, requests with another tenant's salt reuse no prefix at a TTFT of 48.4-49.7s, no faster than recomputation.
+Salting is optional and set per request by a trusted serving layer, and our single-tenant performance runs use no salt. A secret salt per tenant changes the first Block ID and every chained one, so TTFT does not reveal whether another tenant used the same prompt. We run four concurrent requests per node with 64K prefixes and one output token on 2-16 nodes. Requests with a shared salt reuse 99.9% of prompt tokens at a TTFT of 7.5-9.9s. In contrast, requests with distinct tenant salts reuse no prefix at a TTFT of 48.4-51.2s, no faster than recomputation.
 
----
 
-#### Q6-1-Ans) Global Shard Index (RA,RB,RD)
+#### Q6-1-Ans) Global Shard Index (RA, RB, RD)
 
-**Replica placement.** Every node resolves block locations in its full, nonpersistent replica of Global Shard Index in host DRAM, which covers GPU HBM, DRAM, and Lustre.
+**Replicas and ownership.** Every node resolves block locations in its full, nonpersistent replica of Global Shard Index in host DRAM, which covers GPU HBM, DRAM, and Lustre. Only the node storing a block writes its entry, which Metadata Sync propagates to every replica. In Figure 4, Node 2 then resolves the location of a block stored on another node in its own replica.
 
-**Update ownership.** Only the node storing a block writes its entry, which Metadata Sync copies to every replica.
+**Shards.** A Block ID hash selects a GPU and then its shard. Independent shards allow concurrent lookups and index merges without a single global lock.
 
-**Logical partitioning.** Within each replica, a BlockID hash selects a GPUID and then its shard. Thus, under full replication, sharding replaces one global lock with per-shard locks, so Index Merger and lookups contend only within a shard.
+**Deduplication.** Dedup Map records whether a block exists from its PUT until its full eviction, independent of tier movement. Its boolean flag takes one byte per block, against 80 bytes for a location entry. In E2E serving, global deduplication avoids 57-66% of block writes in Table 3. Each Block ID also hashes the model, LoRA adapter, KV dtype/layout, tensor-parallel rank/size, and block size.
+#### Q6-2-Ans) Consistency and metadata scaling (RA, RB)
 
-**Deduplication.** Dedup Map records whether a block exists from PUT until full eviction, and Global Shard Index records one location per block. Thus, tier movement updates only Global Shard Index, and the PUT check covers unfinished stores. Each BlockID hashes the model, LoRA adapter, KV dtype/layout, tensor-parallel rank/size, and block size.
+**Consistency.** CASCADE treats KV blocks as recomputable, so it enforces correctness strictly and treats availability as best effort. Since concurrent PUTs of one Block ID produce equivalent copies, Metadata Sync accepts any entry without consensus. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested Block ID and its recorded checksum. A failed validation triggers recomputation, never the reuse of a wrong block.
 
-#### Q6-2-Ans) Consistency and metadata scaling (RA,RB)
 
-Since inference can recompute KV blocks, CASCADE enforces correctness and treats availability as best effort, and a lost or overwritten block becomes a miss. Concurrent PUTs of one BlockID produce equivalent copies, so Metadata Sync accepts any entry without consensus. A node publishes a location only after storing the block and invalidates only entries that name it. Each RDMA READ is validated against the requested BlockID and its recorded checksum. Thus, a node reuses a buffer slot without waiting for outstanding reads. Any read during or after the reuse returns the requested block or fails validation and triggers recomputation.
+**Metadata scaling.** On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test, batches of 10K and 100K new 4KB blocks per node take at most 41ms and 569ms. At 100K blocks per second per node, the batches equal 100ms and 1000ms intervals. E2E runs create fewer than 100 blocks per node per interval. Before each sync, reads of newly created remote blocks miss, and all 72,000 reads after it hit without Block ID mismatches.
 
-On 2-32 nodes, Metadata Sync takes 0.7-1.6µs per merged delta, including 0.1-0.8µs for Dedup Map. In a 4-node stress test, it takes at most 41ms and 569ms for 10K and 100K 4KB blocks per node. At 100K blocks per second per node, the loads equal 100ms and 1000ms intervals, respectively, with both syncs completing within their intervals. E2E runs create fewer than 100 blocks per node per interval. Reads before each sync miss, and all 72,000 reads after it hit without BlockID mismatches.
+#### Q6-3-Ans) Workload and statistics (RA, RB, RD)
 
-#### Q6-3-Ans) Workload and statistics (RA,RB,RD)
-
-E2E requests use prefixes cached on other nodes, so vLLM CPU offload misses in Figure 16. With 10% sharing in Figure 12b, CASCADE retains 99.4% of prefix blocks, compared with 45.5-85.8% for baselines. Over three or more runs, the TTFT coefficient of variation for CASCADE and Mooncake is at most 11%.
+We route each E2E request to a prefix cached on another node, so node-local vLLM CPU offload misses in Figure 16. In Figure 12b, shared prefixes are 10% of a 10.2TB footprint, and CASCADE retains 99.4% of prefix blocks against 45.5-85.8% for the baselines. Over three or more E2E runs, the TTFT of CASCADE and Mooncake has a coefficient of variation of at most 11%.
