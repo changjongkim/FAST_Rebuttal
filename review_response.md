@@ -7,18 +7,17 @@
 
 ----
 
-
 #### Q1-Ans)
 
-**Networking.** RDMA accelerates retrieval, but CASCADE retains its TTFT advantage over TCP peers. We test CASCADE over MPI/TCP at 2–32 nodes (8–128 GPUs) with Figure 14(c)'s 64K-prefix weak scaling. CASCADE's TTFT is 1.23/1.58/2.02/1.94/2.18s versus Mooncake's 1.37/4.89/9.31/18.24/25.94s. The 32-node speedups are 11.9×/6.6× over Mooncake/LMCache (P2P). This TCP comparison preserves the system-level gains without relying on RDMA. CASCADE resolves locations locally via Global Shard Index and reads Shadow Copy Buffers. In Figure 7, uncompressed 160MB retrieval takes 63–71ms over TCP or 19–22ms over RDMA, versus 211–218ms for LMCache (Disk)/PDC.
+**Networking.** RDMA accelerates retrieval, but CASCADE retains its TTFT advantage over TCP peers. We test CASCADE over MPI/TCP at 2–32 nodes (8–128 GPUs) with Figure 14(c)'s 64K-prefix weak scaling. CASCADE's TTFT is 1.23/1.58/2.02/1.94/2.18s versus Mooncake's 1.37/4.89/9.31/18.24/25.94s. The 32-node speedups are 11.9×/6.6× over Mooncake/LMCache (P2P). The TCP results isolate gains beyond RDMA. CASCADE resolves locations locally via Global Shard Index and reads Shadow Copy Buffers. In Figure 7, uncompressed 160MB retrieval takes 63–71ms over TCP or 19–22ms over RDMA, versus 211–218ms for LMCache (Disk)/PDC.
 
 **Compression.** INT8 trades retrieval latency for capacity rather than accelerating individual reads. CASCADE decompresses DRAM shadows into FP16 for GPU HBM. Disabling INT8 lowers RDMA retrieval latency across sizes and nodes, from 100ms to 38ms for 320MB blocks on 32 nodes. INT8 doubles DRAM block capacity before Lustre eviction.
 
-**Block size.** Replacing 16-token vLLM pages with 256-token blocks reduces CASCADE-TCP TTFT from 1.23–2.18s to 0.97–0.99s on 2–32 nodes. A 64K prefix then spans 16× fewer blocks. At 8 nodes with matched TCP, 256-token blocks, compression, cache capacity, and routing, CASCADE achieves 9.5×/4.1× speedups over Mooncake/LMCache (P2P). All three reuse about 99% of prompt tokens. Separately, uncompressed retrieval rises from 5ms at 40MB to 38ms at 320MB.
+**Block size.** Replacing 16-token vLLM pages with 256-token blocks reduces CASCADE-TCP TTFT from 1.23–2.18s to 0.97–0.99s on 2–32 nodes. A 64K prefix then spans 16× fewer blocks. At 8 nodes with matched TCP, 256-token blocks, compression, cache capacity, and routing, CASCADE achieves 9.5×/4.1× speedups over Mooncake/LMCache (P2P). All three reuse about 99% of prompt tokens. Comparable reuse indicates location and transfer efficiency, not extra prefix hits. Separately, uncompressed retrieval rises from 5ms at 40MB to 38ms at 320MB.
 
 #### Q2-Ans)
 
-CASCADE maintains measured QA quality with per-layer INT8 offload. Using one scale and zero point per layer for keys and values, F1 across 280 answers to 160 unique questions from six English LongBench v1 QA tasks is 40.0 with INT8, 39.5 uncompressed, and 40.2 with vLLM GPU. The 2/4/8-node runs evaluate 40/80/160 questions, respectively. All GPU workers use INT8. In pass two, CASCADE retrieves 99.9% of prompt tokens. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. Per-block scaling instead yields F1 38.9 and 28% answer disagreement.
+CASCADE maintains measured QA quality with per-layer INT8 offload. Using one scale and zero point per layer for keys and values, F1 across 280 answers to 160 unique questions from six English LongBench v1 QA tasks is 40.0 with INT8, 39.5 uncompressed, and 40.2 with vLLM GPU. The 2/4/8-node runs evaluate 40/80/160 questions. Pass-two nodes lack these documents' KV in HBM. All 826,052 retrieved blocks undergo INT8-to-FP16 restoration, covering 94.7% of prompt tokens. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. Per-block scaling instead yields F1 38.9 and 28% answer disagreement.
 
 Decoding reads FP16 blocks in HBM, as compression applies only outside HBM. With four concurrent requests/node, 64K prefixes, and 128 output tokens, CASCADE takes 48–50ms/token against 53ms for vLLM GPU. With 99.9% prompt reuse, CASCADE's TTFT is 14–17s against 55–57s and full request time is 20–22s against 62–64s.
 
