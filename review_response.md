@@ -9,7 +9,9 @@
 #### Q1-Ans)
 
 **Networking.** RDMA accelerates CASCADE's retrieval, but CASCADE retains its TTFT advantage over TCP peers. We run CASCADE with MPI over TCP on 2–32 nodes (8–128 GPUs) using Figure 14(c)'s 64K-prefix weak scaling. CASCADE's TTFT is 1.23–2.18s versus Mooncake's 1.37–25.94s. At 32 nodes, CASCADE achieves 11.9×/6.6× speedups over Mooncake/LMCache (P2P). Unlike the peers' centralized coordination, CASCADE resolves locations locally through Global Shard Index and reuses blocks through Shadow Copy Buffer. In Figure 7's trace-driven workload, uncompressed 160MB retrieval takes 63–71ms over TCP or 19–22ms over RDMA, versus 211–218ms for LMCache (Disk)/PDC.
+
 **Compression.** INT8 trades retrieval latency for capacity. On 32 nodes, RDMA retrieval of a 320MB block takes 100ms with INT8 versus 38ms without it. INT8 halves each block's DRAM footprint, retaining more prefixes before Lustre eviction.
+
 **Block size.** Replacing 16-token vLLM pages with 256-token blocks reduces CASCADE-TCP TTFT from 1.23–2.18s to 0.97–0.99s on 2–32 nodes. A 64K prefix then spans 16× fewer blocks. At 8 nodes with 256-token blocks and matched compression settings, per-node cache capacity, and routing, CASCADE achieves 9.5×/4.1× speedups over Mooncake/LMCache (P2P). All three reuse about 99% of prompt tokens. Separately, uncompressed retrieval rises from 5ms at 40MB to 38ms at 320MB.
 
 #### Q2-Ans)
