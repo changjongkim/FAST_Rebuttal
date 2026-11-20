@@ -16,7 +16,7 @@
 
 #### Q2-Ans)
 
-Per-layer INT8, with one scale and zero point per layer, does not lower output quality. On 280 questions from six English LongBench QA tasks, the F1 score is 40.0 for CASCADE with INT8, 39.5 without compression, and 40.2 for vLLM GPU. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. In contrast, one scale per block lowers the F1 score to 38.9 and changes 28% of the answers.
+Per-layer INT8, with one scale and zero point per layer, does not lower output quality. On 280 answers to 160 questions from six English LongBench QA tasks, F1 is 40.0 for CASCADE with INT8, 39.5 without compression, and 40.2 for vLLM GPU. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. In contrast, one scale per block lowers the F1 score to 38.9 and changes 28% of the answers.
 
 Decoding reads FP16 blocks in GPU HBM, since CASCADE compresses only copies outside HBM. With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE takes 48-50ms per token against 53ms for vLLM GPU. As CASCADE retrieves 99.9% of prompt tokens, its TTFT is 14-17s against 55-57s, and its full request time is 20-22s against 62-64s.
 
