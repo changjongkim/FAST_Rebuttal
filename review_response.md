@@ -10,15 +10,16 @@
 
 **Networking.** RDMA accelerates CASCADE's retrieval, but CASCADE retains its TTFT advantage over TCP peers. We run CASCADE over MPI/TCP on 2–32 nodes (8–128 GPUs) using Figure 14(c)'s 64K-prefix weak scaling. CASCADE's TTFT is 1.23–2.18s versus Mooncake's 1.37–25.94s. At 32 nodes, CASCADE achieves 11.9×/6.6× speedups over Mooncake/LMCache (P2P). Unlike the peers' centralized coordination, CASCADE resolves locations locally through Global Shard Index and reuses blocks in Shadow Copy Buffer. In Figure 7, uncompressed 160MB retrieval takes 63–71ms over TCP or 19–22ms over RDMA, versus 211–218ms for LMCache (Disk)/PDC.
 
-**Compression.** INT8 trades retrieval latency for capacity. On 32 nodes, 320MB RDMA retrieval takes 100ms with INT8 versus 38ms without. INT8 halves each block's DRAM footprint, retaining more prefixes before Lustre eviction.
+**Compression.** CASCADE's gains do not depend on compression, which trades retrieval latency for capacity. An INT8 copy uses half the DRAM of FP16, but retrieval decompresses it into FP16 before placing it in GPU HBM. Thus, in trace-driven runs over RDMA, disabling INT8 lowers retrieval latency at every block size and node count, from 100ms to 38ms for 320MB blocks on 32 nodes. INT8 is enabled by default so that DRAM caches twice as many blocks before eviction to Lustre.
 
 **Block size.** Replacing 16-token vLLM pages with 256-token blocks reduces CASCADE-TCP TTFT from 1.23–2.18s to 0.97–0.99s on 2–32 nodes. A 64K prefix then spans 16× fewer blocks. At 8 nodes, with matched TCP, 256-token blocks, compression, cache capacity, and routing, CASCADE achieves 9.5×/4.1× speedups over Mooncake/LMCache (P2P). All three reuse about 99% of prompt tokens. Separately, uncompressed retrieval rises from 5ms at 40MB to 38ms at 320MB.
 
 #### Q2-Ans)
 
-CASCADE maintains measured QA quality with per-layer INT8 enabled for offloaded blocks. With one scale and zero point per layer for keys and values, F1 over 280 answers to 160 unique questions from six English LongBench v1 QA tasks is 40.0 for CASCADE INT8, 39.5 without compression, and 40.2 for vLLM GPU. All GPU workers enable INT8, and 99.9% of prompt tokens are retrieved through CASCADE in the second pass. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. In contrast, one scale per block lowers F1 to 38.9 and changes 28% of answers.
+CASCADE maintains measured QA quality with per-layer INT8 enabled for offloaded blocks. With one scale and zero point per layer for keys and values, F1 over 280 answers to 160 unique questions from six English LongBench QA tasks is 40.0 for CASCADE INT8, 39.5 without compression, and 40.2 for vLLM GPU. All GPU workers enable INT8, and 99.9% of prompt tokens are retrieved through CASCADE in the second pass. Per-layer INT8 changes 7% of vLLM GPU answers, against 8% between its repeated runs. In contrast, one scale per block lowers F1 to 38.9 and changes 28% of answers.
 
-Decoding reads FP16 blocks in GPU HBM, since CASCADE compresses only copies outside HBM. With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE takes 48–50ms per token against 53ms for vLLM GPU. As CASCADE retrieves 99.9% of prompt tokens, its TTFT is 14–17s against 55–57s, and its full request time is 20–22s against 62–64s.
+Decoding reads FP16 blocks in GPU HBM, since CASCADE compresses only copies outside HBM. With four concurrent requests per node, 64K prefixes, and 128 output tokens, CASCADE takes 48-50ms per token against 53ms for vLLM GPU. As CASCADE retrieves 99.9% of prompt tokens, its TTFT is 14-17s against 55-57s, and its full request time is 20-22s against 62-64s.
+
 
 #### Q3-Ans)
 
